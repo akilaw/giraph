@@ -73,10 +73,18 @@ public class TestHiveJythonPrimitives extends GiraphHiveTestBase {
     };
     hiveServer.loadData(edgesTable, edges);
 
-    String outputTable = "count_edges_output";
-    hiveServer.createTable("CREATE TABLE " + outputTable +
+    String vertexOutputTable = "count_edges_vertex_output";
+    hiveServer.createTable("CREATE TABLE " + vertexOutputTable +
         " (vertex_id INT," +
         "  num_edges INT) " +
+        " ROW FORMAT DELIMITED " +
+        " FIELDS TERMINATED BY '\t'");
+
+    String edgeOutputTable = "count_edges_edge_output";
+    hiveServer.createTable("CREATE TABLE " + edgeOutputTable +
+        " (source_vertex_id INT, " +
+        "  target_vertex_id INT, " +
+        "  value FLOAT) " +
         " ROW FORMAT DELIMITED " +
         " FIELDS TERMINATED BY '\t'");
 
@@ -105,7 +113,7 @@ public class TestHiveJythonPrimitives extends GiraphHiveTestBase {
     Helpers.commitJob(conf);
 
     HiveInputDescription inputDesc = new HiveInputDescription();
-    inputDesc.getTableDesc().setTableName(outputTable);
+    inputDesc.getTableDesc().setTableName(vertexOutputTable);
 
     Iterator<HiveReadableRecord> records = HiveInput.readTable(inputDesc).iterator();
 

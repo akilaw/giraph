@@ -35,6 +35,8 @@ import org.apache.giraph.hive.input.vertex.HiveToVertex;
 import org.apache.giraph.hive.input.vertex.HiveVertexInputFormat;
 import org.apache.giraph.hive.output.HiveVertexOutputFormat;
 import org.apache.giraph.hive.output.VertexToHive;
+import org.apache.giraph.hive.output.HiveEdgeOutputFormat;
+import org.apache.giraph.hive.output.EdgeToHive;
 import org.apache.giraph.io.formats.multi.EdgeInputFormatDescription;
 import org.apache.giraph.io.formats.multi.InputFormatDescription;
 import org.apache.giraph.io.formats.multi.MultiEdgeInputFormat;
@@ -55,6 +57,11 @@ import java.util.Arrays;
 import java.util.List;
 
 import static org.apache.giraph.hive.common.GiraphHiveConstants.HIVE_EDGE_INPUT;
+import static org.apache.giraph.hive.common.GiraphHiveConstants.HIVE_EDGE_OUTPUT_DATABASE;
+import static org.apache.giraph.hive.common.GiraphHiveConstants.HIVE_EDGE_OUTPUT_PARTITION;
+import static org.apache.giraph.hive.common.GiraphHiveConstants.HIVE_EDGE_OUTPUT_PROFILE_ID;
+import static org.apache.giraph.hive.common.GiraphHiveConstants.HIVE_EDGE_OUTPUT_TABLE;
+import static org.apache.giraph.hive.common.GiraphHiveConstants.EDGE_TO_HIVE_CLASS;
 import static org.apache.giraph.hive.common.GiraphHiveConstants.HIVE_VERTEX_INPUT;
 import static org.apache.giraph.hive.common.GiraphHiveConstants.HIVE_VERTEX_OUTPUT_DATABASE;
 import static org.apache.giraph.hive.common.GiraphHiveConstants.HIVE_VERTEX_OUTPUT_PARTITION;
@@ -89,6 +96,9 @@ public class HiveGiraphRunner implements Tool {
 
   /** Hive Vertex writer */
   private Class<? extends VertexToHive> vertexToHiveClass;
+
+  /** Hive Edge writer */
+  private Class<? extends EdgeToHive> edgeToHiveClass;
   /** Skip output? (Useful for testing without writing) */
   private boolean skipOutput = false;
 
@@ -219,6 +229,15 @@ public class HiveGiraphRunner implements Tool {
   }
 
   /**
+   * Whether we are writing edges out.
+   *
+   * @return true if vertex output enabled
+   */
+  public boolean hasEdgeOutput() {
+    return !skipOutput && edgeToHiveClass != null;
+  }
+
+  /**
    * Set vertex output
    *
    * @param vertexToHiveClass class for writing vertices to Hive.
@@ -234,6 +253,25 @@ public class HiveGiraphRunner implements Tool {
     HIVE_VERTEX_OUTPUT_TABLE.set(conf, tableName);
     if (partitionFilter != null) {
       HIVE_VERTEX_OUTPUT_PARTITION.set(conf, partitionFilter);
+    }
+  }
+
+  /**
+   * Set edge output
+   *
+   * @param edgeToHiveClass class for writing vertices to Hive.
+   * @param tableName Table name
+   * @param partitionFilter Partition filter, or null if no filter used
+   */
+  public void setEdgeOutput(
+      Class<? extends EdgeToHive> edgeToHiveClass, String tableName,
+      String partitionFilter) {
+    this.edgeToHiveClass = edgeToHiveClass;
+    EDGE_TO_HIVE_CLASS.set(conf, edgeToHiveClass);
+    HIVE_EDGE_OUTPUT_PROFILE_ID.set(conf, "edge_output_profile");
+    HIVE_EDGE_OUTPUT_TABLE.set(conf, tableName);
+    if (partitionFilter != null) {
+      HIVE_EDGE_OUTPUT_PARTITION.set(conf, partitionFilter);
     }
   }
 
@@ -418,10 +456,13 @@ public class HiveGiraphRunner implements Tool {
   public void prepareHiveOutput() {
     GiraphConstants.VERTEX_OUTPUT_FORMAT_CLASS.set(conf,
         HiveVertexOutputFormat.class);
+    GiraphConstants.EDGE_OUTPUT_FORMAT_CLASS.set(conf,
+        HiveEdgeOutputFormat.class);
     // Output format will be checked by Hadoop, here we only create it in
     // order to initialize the Configuration with data from metastore.
     // Can't check it here since we don't have JobContext yet
     createGiraphConf(conf).createWrappedVertexOutputFormat();
+    createGiraphConf(conf).createWrappedEdgeOutputFormat();
   }
 
   /**
@@ -488,16 +529,29 @@ public class HiveGiraphRunner implements Tool {
       }
     }
 
-    String output = cmdln.getOptionValue("output");
-    if (output != null) {
+    String vertexOutput = cmdln.getOptionValue("vertexOutput");
+    if (vertexOutput != null) {
       // Partition filter can contain commas so we limit the number of times
       // we split
-      String[] parameters = split(output, ",", 3);
+      String[] parameters = split(vertexOutput, ",", 3);
       if (parameters.length < 2) {
         throw new IllegalStateException("Illegal output description " +
-            output + " - VertexToHive class and table name needed");
+            vertexOutput + " - VertexToHive class and table name needed");
       }
       setVertexOutput(findClass(parameters[0], VertexToHive.class),
+          parameters[1], elementOrNull(parameters, 2));
+    }
+
+    String edgeOutput = cmdln.getOptionValue("edgeOutput");
+    if (edgeOutput != null) {
+      // Partition filter can contain commas so we limit the number of times
+      // we split
+      String[] parameters = split(edgeOutput, ",", 3);
+      if (parameters.length < 2) {
+        throw new IllegalStateException("Illegal output description " +
+            edgeOutput + " - EdgeToHive class and table name needed");
+      }
+      setEdgeOutput(findClass(parameters[0], EdgeToHive.class),
           parameters[1], elementOrNull(parameters, 2));
     }
 
@@ -516,7 +570,12 @@ public class HiveGiraphRunner implements Tool {
     if (vertexToHiveClass == null && !skipOutput) {
       throw new IllegalArgumentException(
           "Need the Giraph " + VertexToHive.class.getSimpleName() +
-          " (-output) to use");
+              " (-vertexOutput) to use");
+    }
+    if (edgeToHiveClass == null && !skipOutput) {
+      throw new IllegalArgumentException(
+          "Need the Giraph " + EdgeToHive.class.getSimpleName() +
+              " (-edgeOutput) to use");
     }
     String workersStr = cmdln.getOptionValue("workers");
     if (workersStr == null) {
@@ -546,6 +605,7 @@ public class HiveGiraphRunner implements Tool {
 
     if (!skipOutput) {
       HIVE_VERTEX_OUTPUT_DATABASE.set(conf, dbName);
+      HIVE_EDGE_OUTPUT_DATABASE.set(conf, dbName);
       prepareHiveOutput();
     } else {
       LOG.warn("run: Warning - Output will be skipped!");
@@ -582,10 +642,17 @@ public class HiveGiraphRunner implements Tool {
         "edge", HiveToEdge.class.getSimpleName()));
 
     // Vertex output settings
-    options.addOption("o", "output", true,
+    options.addOption("vo", "vertexOutput", true,
         "Giraph " + VertexToHive.class.getSimpleName() + " class to use," +
             " table name and partition filter (optional). Example:\n" +
             "\"MyVertexToHive, myTableName, a=1,b=two\"");
+
+    // Edge output settings
+    options.addOption("eo", "edgeOutput", true,
+        "Giraph " + EdgeToHive.class.getSimpleName() + " class to use," +
+            " table name and partition filter (optional). Example:\n" +
+            "\"MyEdgeToHive, myTableName, a=1,b=two\"");
+
     options.addOption("s", "skipOutput", false, "Skip output?");
   }
 
@@ -692,6 +759,14 @@ public class HiveGiraphRunner implements Tool {
           HIVE_VERTEX_OUTPUT_TABLE.get(conf) + ", partition=\"" +
           HIVE_VERTEX_OUTPUT_PARTITION.get(conf) + "\"");
     }
+
+    if (GiraphConstants.EDGE_OUTPUT_FORMAT_CLASS.contains(giraphConf)) {
+      LOG.info(LOG_PREFIX + "Output: EdgeToHive=" +
+          edgeToHiveClass.getCanonicalName() + ", table=" +
+          HIVE_EDGE_OUTPUT_TABLE.get(conf) + ", partition=\"" +
+          HIVE_EDGE_OUTPUT_PARTITION.get(conf) + "\"");
+    }
+
 
     LOG.info(LOG_PREFIX + "-workers=" + workers);
   }

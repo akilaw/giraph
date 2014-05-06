@@ -22,6 +22,7 @@ import org.apache.giraph.conf.ImmutableClassesGiraphConfiguration;
 import org.apache.giraph.conf.StrConfOption;
 import org.apache.giraph.hive.input.edge.HiveToEdge;
 import org.apache.giraph.hive.input.vertex.HiveToVertex;
+import org.apache.giraph.hive.output.EdgeToHive;
 import org.apache.giraph.hive.output.VertexToHive;
 import org.apache.giraph.utils.ReflectionUtils;
 import org.apache.hadoop.conf.Configuration;
@@ -47,6 +48,7 @@ import java.util.Map;
 import static java.lang.System.getenv;
 import static org.apache.giraph.hive.common.GiraphHiveConstants.HIVE_EDGE_INPUT;
 import static org.apache.giraph.hive.common.GiraphHiveConstants.HIVE_VERTEX_INPUT;
+import static org.apache.giraph.hive.common.GiraphHiveConstants.EDGE_TO_HIVE_CLASS;
 import static org.apache.giraph.hive.common.GiraphHiveConstants.VERTEX_TO_HIVE_CLASS;
 
 /**
@@ -272,6 +274,29 @@ public class HiveUtils {
     Collection<String> strings = conf.getStringCollection(key);
     strings.addAll(values);
     conf.setStrings(key, strings.toArray(new String[strings.size()]));
+  }
+
+  /**
+   * Create a new EdgeToHive
+   *
+   * @param <I>    Vertex ID
+   * @param <V>    Vertex Value
+   * @param <E>    Edge Value
+   * @param conf   Configuration
+   * @param schema Hive table schema
+   * @return EdgeToHive
+   * @throws IOException on any instantiation errors
+   */
+  public static <I extends WritableComparable, V extends Writable,
+      E extends Writable> EdgeToHive<I, V, E> newEdgeToHive(
+      ImmutableClassesGiraphConfiguration<I, V, E> conf,
+      HiveTableSchema schema) throws IOException {
+    Class<? extends EdgeToHive> klass = EDGE_TO_HIVE_CLASS.get(conf);
+    if (klass == null) {
+      throw new IOException(EDGE_TO_HIVE_CLASS.getKey() +
+          " not set in conf");
+    }
+    return newInstance(klass, conf, schema);
   }
 
   /**

@@ -28,6 +28,7 @@ import org.apache.giraph.hive.common.HiveUtils;
 import org.apache.giraph.hive.common.LanguageAndType;
 import org.apache.giraph.hive.input.edge.HiveEdgeInputFormat;
 import org.apache.giraph.hive.input.vertex.HiveVertexInputFormat;
+import org.apache.giraph.hive.output.HiveEdgeOutputFormat;
 import org.apache.giraph.hive.output.HiveVertexOutputFormat;
 import org.apache.giraph.hive.primitives.PrimitiveValueReader;
 import org.apache.giraph.hive.primitives.PrimitiveValueWriter;
@@ -77,6 +78,7 @@ import java.util.Map;
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
 import static org.apache.giraph.conf.GiraphConstants.EDGE_INPUT_FORMAT_CLASS;
+import static org.apache.giraph.conf.GiraphConstants.EDGE_OUTPUT_FORMAT_CLASS;
 import static org.apache.giraph.conf.GiraphConstants.GRAPH_TYPE_LANGUAGES;
 import static org.apache.giraph.conf.GiraphConstants.MAX_WORKERS;
 import static org.apache.giraph.conf.GiraphConstants.MIN_WORKERS;
@@ -90,6 +92,11 @@ import static org.apache.giraph.hive.common.GiraphHiveConstants.HIVE_VERTEX_OUTP
 import static org.apache.giraph.hive.common.GiraphHiveConstants.HIVE_VERTEX_OUTPUT_PROFILE_ID;
 import static org.apache.giraph.hive.common.GiraphHiveConstants.HIVE_VERTEX_OUTPUT_TABLE;
 import static org.apache.giraph.hive.common.GiraphHiveConstants.VERTEX_TO_HIVE_CLASS;
+import static org.apache.giraph.hive.common.GiraphHiveConstants.HIVE_EDGE_OUTPUT_DATABASE;
+import static org.apache.giraph.hive.common.GiraphHiveConstants.HIVE_EDGE_OUTPUT_PARTITION;
+import static org.apache.giraph.hive.common.GiraphHiveConstants.HIVE_EDGE_OUTPUT_PROFILE_ID;
+import static org.apache.giraph.hive.common.GiraphHiveConstants.HIVE_EDGE_OUTPUT_TABLE;
+import static org.apache.giraph.hive.common.GiraphHiveConstants.EDGE_TO_HIVE_CLASS;
 import static org.apache.giraph.hive.common.GiraphHiveConstants.VERTEX_VALUE_READER_JYTHON_NAME;
 import static org.apache.giraph.hive.common.GiraphHiveConstants.VERTEX_VALUE_WRITER_JYTHON_NAME;
 import static org.apache.giraph.hive.jython.JythonHiveToEdge.EDGE_SOURCE_ID_COLUMN;
@@ -285,7 +292,8 @@ public class HiveJythonUtils {
 
     initHiveReadersWriters(conf, jythonJob, interpreter);
     initGraphTypes(conf, jythonJob, interpreter);
-    initOutput(conf, jythonJob);
+    initVertexOutput(conf, jythonJob);
+    initEdgeOutput(conf, jythonJob);
     initVertexInputs(conf, jythonJob);
     initEdgeInputs(conf, jythonJob);
 
@@ -515,14 +523,17 @@ public class HiveJythonUtils {
 
     if (hasEdgeInputs(jythonJob) &&
         !userTypeIsJavaPrimitiveWritable(jythonJob.getEdge_value())) {
-      checkNotNull(jythonJob.getEdge_value().getHive_reader(),
-          "edge_value.hive_reader cannot be null");
+      checkTypeWithHive(jythonJob.getEdge_value(), GraphType.EDGE_VALUE);
 
       LanguageAndType edgeReader = processUserType(
           jythonJob.getEdge_value().getHive_reader(), interpreter);
       checkImplements(edgeReader, JythonHiveReader.class, interpreter);
       checkArgument(edgeReader.getLanguage() == Language.JYTHON);
       GiraphHiveConstants.EDGE_VALUE_READER_JYTHON_NAME.set(conf,
+          edgeReader.getJythonClassName());
+
+
+      GiraphHiveConstants.EDGE_VALUE_WRITER_JYTHON_NAME.set(conf,
           edgeReader.getJythonClassName());
     }
   }
@@ -881,12 +892,13 @@ public class HiveJythonUtils {
   }
 
   /**
-   * Initialize output info
+   * Initialize vertex output info
    *
    * @param conf Configuration
    * @param jythonJob the job info
    */
-  private static void initOutput(Configuration conf, JythonJob jythonJob) {
+  private static void initVertexOutput(Configuration conf,
+                                       JythonJob jythonJob) {
     JythonJob.VertexOutput vertexOutput = jythonJob.getVertex_output();
     if (vertexOutput.getTable() != null) {
       LOG.info("Setting vertex output using: " + vertexOutput);
@@ -901,6 +913,34 @@ public class HiveJythonUtils {
       if (vertexOutput.getPartition() != null) {
         HIVE_VERTEX_OUTPUT_PARTITION.set(conf,
             makePartitionString(vertexOutput.getPartition()));
+      }
+    }
+  }
+
+  /**
+   * Initialize edge output info
+   *
+   * @param conf Configuration
+   * @param jythonJob the job info
+   */
+  private static void initEdgeOutput(Configuration conf, JythonJob jythonJob) {
+    JythonJob.EdgeOutput edgeOutput = jythonJob.getEdge_output();
+    if (edgeOutput.getTable() != null) {
+      LOG.info("Setting edge output using: " + edgeOutput);
+      EDGE_OUTPUT_FORMAT_CLASS.set(conf, HiveEdgeOutputFormat.class);
+      EDGE_TO_HIVE_CLASS.set(conf, JythonEdgeToHive.class);
+      JythonEdgeToHive.EDGE_SOURCE_ID_COLUMN.set(conf,
+          edgeOutput.getSource_id_column());
+      JythonEdgeToHive.EDGE_TARGET_ID_COLUMN.set(conf,
+          edgeOutput.getTarget_id_column());
+      JythonEdgeToHive.EDGE_VALUE_COLUMN.set(conf,
+          edgeOutput.getValue_column());
+      HIVE_EDGE_OUTPUT_DATABASE.set(conf, jythonJob.getHive_database());
+      HIVE_EDGE_OUTPUT_PROFILE_ID.set(conf, "edge_output_profile");
+      HIVE_EDGE_OUTPUT_TABLE.set(conf, edgeOutput.getTable());
+      if (edgeOutput.getPartition() != null) {
+        HIVE_EDGE_OUTPUT_PARTITION.set(conf,
+            makePartitionString(edgeOutput.getPartition()));
       }
     }
   }

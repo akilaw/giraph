@@ -93,10 +93,18 @@ public class TestHiveJythonComplexTypes extends GiraphHiveTestBase {
     };
     hiveServer.loadData(vertexesTable, vertexes);
 
-    String outputTable = "flp_output";
-    hiveServer.createTable("CREATE TABLE " + outputTable +
+    String vertexOutputTable = "flp_output_vertex";
+    hiveServer.createTable("CREATE TABLE " + vertexOutputTable +
         " (id INT," +
         "  value MAP<INT,DOUBLE>) " +
+        " ROW FORMAT DELIMITED " +
+        " FIELDS TERMINATED BY '\t'");
+
+    String edgeOutputTable = "flp_output_edge";
+    hiveServer.createTable("CREATE TABLE " + edgeOutputTable +
+        " (source_vertex_id INT," +
+        "  target_vertex_id INT," +
+        "  value FLOAT) " +
         " ROW FORMAT DELIMITED " +
         " FIELDS TERMINATED BY '\t'");
 
@@ -126,7 +134,7 @@ public class TestHiveJythonComplexTypes extends GiraphHiveTestBase {
     Helpers.commitJob(conf);
 
     HiveInputDescription inputDesc = new HiveInputDescription();
-    inputDesc.getTableDesc().setTableName(outputTable);
+    inputDesc.getTableDesc().setTableName(vertexOutputTable);
 
     Iterator<HiveReadableRecord> records = HiveInput.readTable(inputDesc).iterator();
 

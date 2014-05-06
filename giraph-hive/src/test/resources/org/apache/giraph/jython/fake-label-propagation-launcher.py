@@ -30,7 +30,7 @@ def prepare(job):
     job.vertex_value.hive_io = FakeLPVertexValueHive
 
     job.edge_value.type = FakeLPEdgeValue
-    job.edge_value.hive_reader = FakeLPEdgeReader
+    job.edge_value.hive_io = FakeLPEdgeValueHive
 
     job.message_value.type = "FakeLPMessageValue"
 
@@ -47,6 +47,11 @@ def prepare(job):
     vertex_input.value_column = "value"
     job.vertex_inputs.add(vertex_input)
 
-    job.vertex_output.table = "flp_output"
+    job.vertex_output.table = "flp_output_vertex"
     job.vertex_output.id_column = "id"
     job.vertex_output.value_column = "value"
+    
+    job.edge_output.table = "flp_output_edge"
+    job.edge_output.source_id_column = "source_vertex_id"
+    job.edge_output.target_id_column = "target_vertex_id"
+    job.edge_output.value_column = "value"

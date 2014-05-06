@@ -38,6 +38,11 @@ def prepare(job):
     edge_input.target_id_column = "target_edge_id"
     job.edge_inputs.add(edge_input)
 
-    job.vertex_output.table = "count_edges_output"
+    job.vertex_output.table = "count_edges_vertex_output"
     job.vertex_output.id_column = "vertex_id"
     job.vertex_output.value_column = "num_edges"
+    
+    job.edge_output.table = "count_edges_edge_output"
+    job.edge_output.source_id_column = "source_vertex_id"
+    job.edge_output.target_id_column = "target_vertex_id"
+    job.edge_output.value_column = "value"

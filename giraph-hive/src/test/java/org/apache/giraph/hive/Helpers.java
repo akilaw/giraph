@@ -20,6 +20,7 @@ package org.apache.giraph.hive;
 import org.apache.giraph.conf.GiraphConfiguration;
 import org.apache.giraph.conf.ImmutableClassesGiraphConfiguration;
 import org.apache.giraph.io.internal.WrappedVertexOutputFormat;
+import org.apache.giraph.io.internal.WrappedEdgeOutputFormat;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.mapred.HackJobContext;
 import org.apache.hadoop.mapred.HackTaskAttemptContext;
@@ -65,14 +66,23 @@ public class Helpers {
   public static void commitJob(GiraphConfiguration conf)
     throws IOException, InterruptedException {
     ImmutableClassesGiraphConfiguration iconf = new ImmutableClassesGiraphConfiguration(conf);
-    WrappedVertexOutputFormat outputFormat = iconf.createWrappedVertexOutputFormat();
+    WrappedVertexOutputFormat vertexOutputFormat = iconf.createWrappedVertexOutputFormat();
     JobConf jobConf = new JobConf(conf);
     TaskAttemptContext
         taskContext = new HackTaskAttemptContext(jobConf, new TaskAttemptID());
-    OutputCommitter outputCommitter = outputFormat.getOutputCommitter(
+    OutputCommitter vertexOutputCommitter = vertexOutputFormat.getOutputCommitter(
         taskContext);
     JobContext jobContext = new HackJobContext(jobConf, taskContext.getJobID());
-    outputCommitter.commitJob(jobContext);
+    vertexOutputCommitter.commitJob(jobContext);
+
+    WrappedEdgeOutputFormat edgeOutputFormat =
+        iconf.createWrappedEdgeOutputFormat();
+    jobConf = new JobConf(conf);
+    taskContext = new HackTaskAttemptContext(jobConf, new TaskAttemptID());
+    OutputCommitter edgeOutputCommitter = edgeOutputFormat.getOutputCommitter(
+        taskContext);
+    jobContext = new HackJobContext(jobConf, taskContext.getJobID());
+    edgeOutputCommitter.commitJob(jobContext);
   }
 
   public static JobContext makeJobContext(Configuration conf) {

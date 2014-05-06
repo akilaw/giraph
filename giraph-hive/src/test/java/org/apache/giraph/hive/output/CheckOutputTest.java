@@ -23,6 +23,7 @@ import org.apache.giraph.edge.ByteArrayEdges;
 import org.apache.giraph.hive.GiraphHiveTestBase;
 import org.apache.giraph.hive.common.GiraphHiveConstants;
 import org.apache.giraph.hive.computations.ComputationCountEdges;
+import org.apache.giraph.hive.output.examples.HiveOutputIntNullEdge;
 import org.apache.giraph.hive.output.examples.HiveOutputIntIntVertex;
 import org.apache.giraph.io.formats.IntNullTextEdgeInputFormat;
 import org.apache.giraph.utils.InternalVertexRunner;
@@ -53,7 +54,37 @@ public class CheckOutputTest extends GiraphHiveTestBase {
   }
 
   @Test
-  public void testCheck() throws Exception {
+  public void testCheckEdge() throws Exception {
+    EdgeToHive edgeToHive = new HiveOutputIntNullEdge();
+    HiveOutputDescription outputDesc = new HiveOutputDescription();
+    HiveTableSchema schema = TestSchema.builder()
+        .addColumn("foo", HiveType.LONG)
+        .addColumn("bar", HiveType.LONG)
+        .addColumn("baz", HiveType.DOUBLE)
+        .build();
+    edgeToHive.checkOutput(outputDesc, schema, newWritableRecord(schema));
+
+    schema = TestSchema.builder()
+        .addColumn("foo", HiveType.INT)
+        .addColumn("bar", HiveType.LONG)
+        .addColumn("baz", HiveType.DOUBLE)
+        .build();
+    checkEdgeThrows(edgeToHive, outputDesc, schema);
+  }
+
+  private void checkEdgeThrows(EdgeToHive edgeToHive,
+                                 HiveOutputDescription outputDesc, HiveTableSchema schema) {
+    try {
+      edgeToHive.checkOutput(outputDesc, schema, newWritableRecord(schema));
+    } catch (IllegalArgumentException e) {
+      return;
+    }
+    Assert.fail();
+  }
+
+
+  @Test
+  public void testCheckVertex() throws Exception {
     VertexToHive vertexToHive = new HiveOutputIntIntVertex();
     HiveOutputDescription outputDesc = new HiveOutputDescription();
     HiveTableSchema schema = TestSchema.builder()
@@ -66,10 +97,10 @@ public class CheckOutputTest extends GiraphHiveTestBase {
             .addColumn("foo", HiveType.INT)
             .addColumn("bar", HiveType.LONG)
             .build();
-    checkThrows(vertexToHive, outputDesc, schema);
+    checkVertexThrows(vertexToHive, outputDesc, schema);
   }
 
-  private void checkThrows(VertexToHive vertexToHive,
+  private void checkVertexThrows(VertexToHive vertexToHive,
       HiveOutputDescription outputDesc, HiveTableSchema schema) {
     try {
       vertexToHive.checkOutput(outputDesc, schema, newWritableRecord(schema));
@@ -81,9 +112,13 @@ public class CheckOutputTest extends GiraphHiveTestBase {
 
   @Test
   public void testCheckFailsJob() throws Exception {
-    String tableName = "test1";
-    hiveServer.createTable("CREATE TABLE " + tableName +
+    String vertexTableName = "test1Vertex";
+    hiveServer.createTable("CREATE TABLE " + vertexTableName +
        " (i1 INT, i2 BIGINT) ");
+
+    String edgeTableName = "test1Edge";
+    hiveServer.createTable("CREATE TABLE " + edgeTableName +
+        " (i1 BIGINT, i2 BIGINT, d3 DOUBLE) ");
 
     GiraphConfiguration conf = new GiraphConfiguration();
     String[] edges = new String[] {
@@ -93,13 +128,16 @@ public class CheckOutputTest extends GiraphHiveTestBase {
         "4 1"
     };
 
-    GiraphHiveConstants.HIVE_VERTEX_OUTPUT_TABLE.set(conf, tableName);
+    GiraphHiveConstants.HIVE_EDGE_OUTPUT_TABLE.set(conf, edgeTableName);
+    GiraphHiveConstants.HIVE_VERTEX_OUTPUT_TABLE.set(conf, vertexTableName);
+    GiraphHiveConstants.EDGE_TO_HIVE_CLASS.set(conf,HiveOutputIntNullEdge.class);
     GiraphHiveConstants.VERTEX_TO_HIVE_CLASS.set(conf, HiveOutputIntIntVertex.class);
 
     conf.setComputationClass(ComputationCountEdges.class);
     conf.setOutEdgesClass(ByteArrayEdges.class);
     conf.setEdgeInputFormatClass(IntNullTextEdgeInputFormat.class);
     conf.setVertexOutputFormatClass(HiveVertexOutputFormat.class);
+    conf.setEdgeOutputFormatClass(HiveEdgeOutputFormat.class);
     try {
       Iterable<String> result = InternalVertexRunner.run(conf, null, edges);
       assertNull(result);

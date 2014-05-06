@@ -60,10 +60,13 @@ class FakeLPEdgeValue(Writable):
         self.foo = "wrote_out"
 
 
-# Hive reader for edges
-class FakeLPEdgeReader(JythonHiveReader):
+# Hive reader/writer for edges
+class FakeLPEdgeValueHive(JythonHiveIO):
     def readFromHive(self, edge_value, column):
         edge_value.value = column.getFloat()
+    
+    def writeToHive(self, edge_value, column):
+        column.setFloat(edge_value.value)
 
 
 # Doesn't implement anything. Use default Jython serialization.

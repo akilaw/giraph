@@ -24,6 +24,7 @@ import org.apache.giraph.hive.GiraphHiveTestBase;
 import org.apache.giraph.hive.Helpers;
 import org.apache.giraph.hive.common.GiraphHiveConstants;
 import org.apache.giraph.hive.computations.ComputationCountEdges;
+import org.apache.giraph.hive.output.examples.HiveOutputIntNullEdge;
 import org.apache.giraph.hive.output.examples.HiveOutputIntIntVertex;
 import org.apache.giraph.io.formats.IntNullTextEdgeInputFormat;
 import org.apache.giraph.utils.InternalVertexRunner;
@@ -55,61 +56,95 @@ public class HiveOutputTest extends GiraphHiveTestBase {
   }
 
   @Test
-  public void testHiveOutput() throws Exception
+  public void testHiveEdgeOutput() throws Exception
   {
-    String tableName = "test1";
-    hiveServer.createTable("CREATE TABLE " + tableName +
-       " (i1 BIGINT, i2 BIGINT) ");
+    String edgeTableName = "test1Edge";
+    hiveServer.createTable("CREATE TABLE " + edgeTableName +
+        " (i1 BIGINT, i2 BIGINT) ");
+
+    String vertexTableName = "test1Vertex";
+    hiveServer.createTable("CREATE TABLE " + vertexTableName +
+        " (i1 BIGINT, i2 BIGINT) ");
 
     GiraphConfiguration conf = new GiraphConfiguration();
-    runJob(tableName, conf);
+    runJob(edgeTableName, vertexTableName, conf);
 
     HiveInputDescription inputDesc = new HiveInputDescription();
-    inputDesc.getTableDesc().setTableName(tableName);
+    inputDesc.getTableDesc().setTableName(edgeTableName);
 
-    verifyRecords(inputDesc);
+    verifyEdgeRecords(inputDesc);
   }
 
   @Test
-  public void testHiveOutputWithPartitions() throws Exception
+  public void testHiveVertexOutput() throws Exception
   {
-    String tableName = "test1";
-    hiveServer.createTable("CREATE TABLE " + tableName +
+    String edgeTableName = "test1Edge";
+    hiveServer.createTable("CREATE TABLE " + edgeTableName +
+        " (i1 BIGINT, i2 BIGINT) ");
+
+    String vertexTableName = "test1Vertex";
+    hiveServer.createTable("CREATE TABLE " + vertexTableName +
+       " (i1 BIGINT, i2 BIGINT) ");
+
+    GiraphConfiguration conf = new GiraphConfiguration();
+    runJob(edgeTableName, vertexTableName, conf);
+
+    HiveInputDescription inputDesc = new HiveInputDescription();
+    inputDesc.getTableDesc().setTableName(vertexTableName);
+
+    verifyVertexRecords(inputDesc);
+  }
+
+  @Test
+  public void testHiveVertexOutputWithPartitions() throws Exception
+  {
+    String edgeTableName = "test1Edge";
+    hiveServer.createTable("CREATE TABLE " + edgeTableName +
+        " (i1 BIGINT, i2 BIGINT) ");
+
+    String vertexTableName = "test1Vertex";
+    hiveServer.createTable("CREATE TABLE " + vertexTableName +
         " (i1 BIGINT, i2 BIGINT) " +
         " PARTITIONED BY (ds STRING) ");
 
     GiraphConfiguration conf = new GiraphConfiguration();
     GiraphHiveConstants.HIVE_VERTEX_OUTPUT_PARTITION.set(conf, "ds=foobar");
 
-    runJob(tableName, conf);
+    runJob(edgeTableName, vertexTableName, conf);
 
     HiveInputDescription inputDesc = new HiveInputDescription();
-    inputDesc.getTableDesc().setTableName(tableName);
+    inputDesc.getTableDesc().setTableName(vertexTableName);
     inputDesc.setPartitionFilter("ds='foobar'");
 
-    verifyRecords(inputDesc);
+    verifyVertexRecords(inputDesc);
   }
 
   @Test
-  public void testHiveMultithreadedOutput() throws Exception
+  public void testHiveVertexMultithreadedOutput() throws Exception
   {
-    String tableName = "test1";
-    hiveServer.createTable("CREATE TABLE " + tableName +
+    String edgeTableName = "test1Edge";
+    hiveServer.createTable("CREATE TABLE " + edgeTableName +
+        " (i1 BIGINT, i2 BIGINT) ");
+
+    String vertexTableName = "test1Vertex";
+    hiveServer.createTable("CREATE TABLE " + vertexTableName +
         " (i1 BIGINT, i2 BIGINT) ");
 
     GiraphConfiguration conf = new GiraphConfiguration();
     conf.setVertexOutputFormatThreadSafe(true);
     conf.setNumOutputThreads(2);
     GiraphConstants.USER_PARTITION_COUNT.set(conf, 4);
-    runJob(tableName, conf);
+    runJob(edgeTableName, vertexTableName, conf);
 
     HiveInputDescription inputDesc = new HiveInputDescription();
-    inputDesc.getTableDesc().setTableName(tableName);
+    inputDesc.getTableDesc().setTableName(vertexTableName);
 
-    verifyRecords(inputDesc);
+    verifyVertexRecords(inputDesc);
   }
 
-  private void runJob(String tableName, GiraphConfiguration conf) throws Exception {
+  private void runJob(String edgeTableName,
+                      String vertexTableName, GiraphConfiguration conf) throws
+      Exception {
     String[] edges = new String[] {
         "1 2",
         "2 3",
@@ -117,19 +152,22 @@ public class HiveOutputTest extends GiraphHiveTestBase {
         "4 1"
     };
 
-    GiraphHiveConstants.HIVE_VERTEX_OUTPUT_TABLE.set(conf, tableName);
+    GiraphHiveConstants.HIVE_EDGE_OUTPUT_TABLE.set(conf, edgeTableName);
+    GiraphHiveConstants.EDGE_TO_HIVE_CLASS.set(conf, HiveOutputIntNullEdge.class);
+    GiraphHiveConstants.HIVE_VERTEX_OUTPUT_TABLE.set(conf, vertexTableName);
     GiraphHiveConstants.VERTEX_TO_HIVE_CLASS.set(conf, HiveOutputIntIntVertex.class);
 
     conf.setComputationClass(ComputationCountEdges.class);
     conf.setOutEdgesClass(ByteArrayEdges.class);
     conf.setEdgeInputFormatClass(IntNullTextEdgeInputFormat.class);
+    conf.setEdgeOutputFormatClass(HiveEdgeOutputFormat.class);
     conf.setVertexOutputFormatClass(HiveVertexOutputFormat.class);
     InternalVertexRunner.run(conf, null, edges);
 
     Helpers.commitJob(conf);
   }
 
-  private void verifyRecords(HiveInputDescription inputDesc)
+  private void verifyVertexRecords(HiveInputDescription inputDesc)
       throws IOException, InterruptedException
   {
     Iterable<HiveReadableRecord> records = HiveInput.readTable(inputDesc);
@@ -137,6 +175,26 @@ public class HiveOutputTest extends GiraphHiveTestBase {
 
     // Records are in an unknown sort order so we grab their values here
     for (HiveReadableRecord record : records) {
+      if (data.put(record.getLong(0), record.getLong(1)) != null) {
+        Assert.fail("Id " + record.getLong(0) + " appears twice in the output");
+      }
+    }
+
+    assertEquals(3, data.size());
+    assertEquals(1L, (long) data.get(1L));
+    assertEquals(2L, (long) data.get(2L));
+    assertEquals(1L, (long) data.get(4L));
+  }
+
+  private void verifyEdgeRecords(HiveInputDescription inputDesc)
+      throws IOException, InterruptedException
+  {
+    Iterable<HiveReadableRecord> records = HiveInput.readTable(inputDesc);
+    Map<Long, Long> data = Maps.newHashMap();
+
+    // Records are in an unknown sort order so we grab their values here
+    for (HiveReadableRecord record : records) {
+      System.out.println("verifyEdgeRecords:" + record.getLong(0)+ record.getLong(1));
       if (data.put(record.getLong(0), record.getLong(1)) != null) {
         Assert.fail("Id " + record.getLong(0) + " appears twice in the output");
       }

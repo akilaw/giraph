@@ -68,6 +68,35 @@ public class JythonJob {
   }
 
   /**
+   * Base class for output information
+   */
+  public static class OutputBase {
+    /** Partition data */
+    private final Map<String, String> partition = Maps.newHashMap();
+    /** Name of hive table */
+    private String table;
+
+    public Map<String, String> getPartition() {
+      return partition;
+    }
+
+    public String getTable() {
+      return table;
+    }
+
+    public void setTable(String table) {
+      this.table = table;
+    }
+
+    @Override public String toString() {
+      return Objects.toStringHelper(this)
+          .add("table", table)
+          .add("partition", partition)
+          .toString();
+    }
+  }
+
+  /**
    * Info about vertex input
    */
   public static class VertexInput extends InputBase {
@@ -151,11 +180,7 @@ public class JythonJob {
   /**
    * Info about vertex output
    */
-  public static class VertexOutput {
-    /** Name of hive table */
-    private String table;
-    /** Partition data */
-    private final Map<String, String> partition = Maps.newHashMap();
+  public static class VertexOutput extends OutputBase {
     /** Name of Vertex ID column */
     private String id_column;
     /** Name of Vertex value column */
@@ -169,18 +194,6 @@ public class JythonJob {
       this.id_column = id_column;
     }
 
-    public Map<String, String> getPartition() {
-      return partition;
-    }
-
-    public String getTable() {
-      return table;
-    }
-
-    public void setTable(String table) {
-      this.table = table;
-    }
-
     public String getValue_column() {
       return value_column;
     }
@@ -191,10 +204,56 @@ public class JythonJob {
 
     @Override public String toString() {
       return Objects.toStringHelper(this)
-          .add("table", table)
-          .add("partition", partition)
+          .add("table", getTable())
+          .add("partition", getPartition())
           .add("id_column", id_column)
           .add("value_column", value_column)
+          .toString();
+    }
+  }
+
+  /**
+   * Info about edge output
+   */
+  public static class EdgeOutput extends OutputBase {
+    /** Name for source ID column */
+    private String source_id_column;
+    /** Name for target ID column */
+    private String target_id_column;
+    /** Name of edge value column */
+    private String value_column;
+
+    public String getValue_column() {
+      return value_column;
+    }
+
+    public void setValue_column(String value_column) {
+      this.value_column = value_column;
+    }
+
+    public String getSource_id_column() {
+      return source_id_column;
+    }
+
+    public void setSource_id_column(String source_id_column) {
+      this.source_id_column = source_id_column;
+    }
+
+    public String getTarget_id_column() {
+      return target_id_column;
+    }
+
+    public void setTarget_id_column(String target_id_column) {
+      this.target_id_column = target_id_column;
+    }
+
+    @Override public String toString() {
+      return Objects.toStringHelper(this)
+          .add("table", getTable())
+          .add("partition", getPartition())
+          .add("source_id_column", source_id_column)
+          .add("target_id_column", target_id_column)
+          .add("edge_value_column", value_column)
           .toString();
     }
   }
@@ -291,8 +350,10 @@ public class JythonJob {
   private final List<VertexInput> vertex_inputs = Lists.newArrayList();
   /** Edge inputs */
   private final List<EdgeInput> edge_inputs = Lists.newArrayList();
-  /** Output */
+  /** Vertex output */
   private final VertexOutput vertex_output = new VertexOutput();
+  /** Edge output */
+  private final EdgeOutput edge_output = new EdgeOutput();
 
   /////// Read only info for jython scripts ////////
   /** User running the job */
@@ -393,6 +454,10 @@ public class JythonJob {
 
   public VertexOutput getVertex_output() {
     return vertex_output;
+  }
+
+  public EdgeOutput getEdge_output() {
+    return edge_output;
   }
 
   public int getWorkers() {

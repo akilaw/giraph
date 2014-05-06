@@ -23,6 +23,7 @@ import org.apache.giraph.conf.StrConfOption;
 import org.apache.giraph.hive.input.edge.HiveToEdge;
 import org.apache.giraph.hive.input.vertex.HiveToVertex;
 import org.apache.giraph.hive.output.VertexToHive;
+import org.apache.giraph.hive.output.EdgeToHive;
 
 /**
  * Constants for giraph-hive
@@ -57,7 +58,29 @@ public class GiraphHiveConstants {
       new StrConfOption("giraph.hive.output.vertex.partition", "",
           "Vertex output partition");
 
-  /** Vertex ID hive reader */
+  /** Class for converting edges to Hive records */
+  public static final ClassConfOption<EdgeToHive> EDGE_TO_HIVE_CLASS =
+      ClassConfOption.create("giraph.edge.to.hive.class", null,
+         EdgeToHive.class,
+         "Class for converting edges to Hive records");
+  /** Edge output profile id */
+  public static final StrConfOption HIVE_EDGE_OUTPUT_PROFILE_ID =
+       new StrConfOption("giraph.hive.output.edge.profileId", "edge_output",
+          "Edge output profile id");
+  /** Edge output database name */
+  public static final StrConfOption HIVE_EDGE_OUTPUT_DATABASE =
+       new StrConfOption("giraph.hive.output.edge.database", "default",
+          "Edge output database name");
+    /** Edge output table name */
+  public static final StrConfOption HIVE_EDGE_OUTPUT_TABLE =
+       new StrConfOption("giraph.hive.output.edge.table", "",
+                    "Edge output table name");
+  /** Edge output partition */
+  public static final StrConfOption HIVE_EDGE_OUTPUT_PARTITION =
+       new StrConfOption("giraph.hive.output.edge.partition", "",
+             "Edge output partition");
+
+  /** Vertex ID hive reader*/
   public static final StrConfOption VERTEX_ID_READER_JYTHON_NAME =
       new StrConfOption("giraph.hive.jython.vertex.id.reader", null,
           "Vertex ID hive reader");
@@ -77,6 +100,10 @@ public class GiraphHiveConstants {
   public static final StrConfOption EDGE_VALUE_READER_JYTHON_NAME =
       new StrConfOption("giraph.hive.jython.edge.value.reader", null,
           "Edge value hive reader");
+  /** Edge value hive writer */
+  public static final StrConfOption EDGE_VALUE_WRITER_JYTHON_NAME =
+      new StrConfOption("giraph.hive.jython.edge.value.writer", null,
+          "Edge value hive writer");
 
   /** Don't construct */
   protected GiraphHiveConstants() { }
