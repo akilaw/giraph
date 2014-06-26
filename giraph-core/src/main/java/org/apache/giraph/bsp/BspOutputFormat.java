@@ -20,6 +20,7 @@ package org.apache.giraph.bsp;
 
 import org.apache.giraph.conf.ImmutableClassesGiraphConfiguration;
 import org.apache.hadoop.io.Text;
+import org.apache.hadoop.giraph.shims.ShimLoader;
 import org.apache.hadoop.mapreduce.JobContext;
 import org.apache.hadoop.mapreduce.OutputCommitter;
 import org.apache.hadoop.mapreduce.OutputFormat;
@@ -64,7 +65,7 @@ public class BspOutputFormat extends OutputFormat<Text, Text> {
     if (!conf.hasVertexOutputFormat() && !conf.hasEdgeOutputFormat()) {
       LOG.warn("getOutputCommitter: Returning " +
           "ImmutableOutputCommiter (does nothing).");
-      return new ImmutableOutputCommitter();
+      return ShimLoader.getHadoopShims().getNullOutputCommitter();
     }
 
     if (conf.hasVertexOutputFormat()) {

@@ -115,6 +115,13 @@ under the License.
 
     <!-- runtime dependency -->
     <dependency>
+      <groupId>org.apache.giraph</groupId>
+      <artifactId>giraph-shims-aggregator</artifactId>
+      <version>${project.version}</version>
+      <scope>runtime</scope>
+      <optional>true</optional>
+    </dependency>
+    <dependency>
       <groupId>org.slf4j</groupId>
       <artifactId>slf4j-api</artifactId>
       <scope>runtime</scope>

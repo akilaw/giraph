@@ -153,12 +153,6 @@ public class NettyWorkerClient<I extends WritableComparable,
     nettyClient.stop();
   }
 
-/*if[HADOOP_NON_SECURE]
-  @Override
-  public void setup() {
-    openConnections();
-  }
-else[HADOOP_NON_SECURE]*/
   @Override
   public void setup(boolean authenticate) {
     openConnections();
@@ -166,14 +160,9 @@ else[HADOOP_NON_SECURE]*/
       authenticate();
     }
   }
-/*end[HADOOP_NON_SECURE]*/
 
-/*if[HADOOP_NON_SECURE]
-else[HADOOP_NON_SECURE]*/
   @Override
   public void authenticate() {
     nettyClient.authenticate();
   }
-
-/*end[HADOOP_NON_SECURE]*/
 }

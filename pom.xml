@@ -318,6 +318,12 @@ under the License.
     <dep.zookeeper.version>3.4.5</dep.zookeeper.version>
 
     <forHadoop>for-hadoop-${hadoop.version}</forHadoop>
+
+    <!-- hadoop versions used by shim -->
+    <hadoop-20.version>0.20.2</hadoop-20.version>
+    <hadoop-20S.version>1.2.1</hadoop-20S.version> <!-- 1.2.1-->
+    <hadoop-23.version>2.2.0</hadoop-23.version>
+
     <munge.symbols>NO_MUNGE_SYMBOLS</munge.symbols>
   </properties>
 
@@ -2159,6 +2165,7 @@ under the License.
   </dependencyManagement>
 
   <modules>
+    <module>giraph-shims</module>
     <module>giraph-core</module>
     <module>giraph-examples</module>
   </modules>

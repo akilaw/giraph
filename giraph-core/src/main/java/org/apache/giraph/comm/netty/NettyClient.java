@@ -37,6 +37,7 @@ import org.apache.giraph.utils.PipelineUtils;
 import org.apache.giraph.utils.ProgressableUtils;
 import org.apache.giraph.utils.TimedLogger;
 import org.apache.hadoop.mapreduce.Mapper;
+import org.apache.hadoop.giraph.shims.ShimLoader;
 import org.apache.log4j.Logger;
 
 import com.google.common.collect.Lists;
@@ -254,8 +255,11 @@ public class NettyClient {
         .handler(new ChannelInitializer<SocketChannel>() {
           @Override
           protected void initChannel(SocketChannel ch) throws Exception {
-      /*if_not[HADOOP_NON_SECURE]*/
-            if (conf.authenticate()) {
+
+            // If authentication is enabled and the hadoop version is security
+            // enabled version
+            if (conf.authenticate() &&
+                ShimLoader.getHadoopShims().isSecurityEnabled()) {
               LOG.info("Using Netty with authentication.");
 
               // Our pipeline starts with just byteCounter, and then we use
@@ -299,7 +303,6 @@ public class NettyClient {
                       conf), handlerToUseExecutionGroup, executionGroup, ch);
             } else {
               LOG.info("Using Netty without authentication.");
-/*end[HADOOP_NON_SECURE]*/
               PipelineUtils.addLastWithExecutorCheck("clientInboundByteCounter",
                   inboundByteCounter, handlerToUseExecutionGroup,
                   executionGroup, ch);
@@ -318,10 +321,7 @@ public class NettyClient {
               PipelineUtils.addLastWithExecutorCheck("response-handler",
                     new ResponseClientHandler(clientRequestIdRequestInfoMap,
                         conf), handlerToUseExecutionGroup, executionGroup, ch);
-
-/*if_not[HADOOP_NON_SECURE]*/
             }
-/*end[HADOOP_NON_SECURE]*/
           }
         });
   }
@@ -462,31 +462,33 @@ public class NettyClient {
     }
   }
 
-/*if_not[HADOOP_NON_SECURE]*/
   /**
    * Authenticate all servers in addressChannelMap.
    */
   public void authenticate() {
-    LOG.info("authenticate: NettyClient starting authentication with " +
-        "servers.");
-    for (InetSocketAddress address: addressChannelMap.keySet()) {
-      if (LOG.isDebugEnabled()) {
-        LOG.debug("authenticate: Authenticating with address:" + address);
-      }
-      ChannelRotater channelRotater = addressChannelMap.get(address);
-      for (Channel channel: channelRotater.getChannels()) {
+    // Do the authentication only if the hadoop version is security enabled
+    if (ShimLoader.getHadoopShims().isSecurityEnabled()) {
+      LOG.info("authenticate: NettyClient starting authentication with " +
+          "servers.");
+      for (InetSocketAddress address : addressChannelMap.keySet()) {
         if (LOG.isDebugEnabled()) {
-          LOG.debug("authenticate: Authenticating with server on channel: " +
-              channel);
+          LOG.debug("authenticate: Authenticating with address:" + address);
         }
-        authenticateOnChannel(channelRotater.getTaskId(), channel);
+        ChannelRotater channelRotater = addressChannelMap.get(address);
+        for (Channel channel : channelRotater.getChannels()) {
+          if (LOG.isDebugEnabled()) {
+            LOG.debug("authenticate: Authenticating with server on channel: " +
+                channel);
+          }
+          authenticateOnChannel(channelRotater.getTaskId(), channel);
+        }
       }
-    }
-    if (LOG.isInfoEnabled()) {
-      LOG.info("authenticate: NettyClient successfully authenticated with " +
-          addressChannelMap.size() + " server" +
-          ((addressChannelMap.size() != 1) ? "s" : "") +
-          " - continuing with normal work.");
+      if (LOG.isInfoEnabled()) {
+        LOG.info("authenticate: NettyClient successfully authenticated with " +
+            addressChannelMap.size() + " server" +
+            ((addressChannelMap.size() != 1) ? "s" : "") +
+            " - continuing with normal work.");
+      }
     }
   }
 
@@ -537,7 +539,6 @@ public class NettyClient {
     }
     return;
   }
-/*end[HADOOP_NON_SECURE]*/
 
   /**
    * Stop the client.
@@ -653,11 +654,10 @@ public class NettyClient {
       outboundByteCounter.resetAll();
     }
     boolean registerRequest = true;
-/*if_not[HADOOP_NON_SECURE]*/
+
     if (request.getType() == RequestType.SASL_TOKEN_MESSAGE_REQUEST) {
       registerRequest = false;
     }
-/*end[HADOOP_NON_SECURE]*/
 
     Channel channel = getNextChannel(remoteServer);
     RequestInfo newRequestInfo = new RequestInfo(remoteServer, request);

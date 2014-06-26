@@ -172,6 +172,16 @@ under the License.
       <type>test-jar</type>
     </dependency>
 
+    <!-- runtime dependencies. -->
+
+    <dependency>
+      <groupId>org.apache.giraph</groupId>
+      <artifactId>giraph-shims-aggregator</artifactId>
+      <version>${project.version}</version>
+      <scope>runtime</scope>
+      <optional>true</optional>
+    </dependency>
+
     <!-- provided dependencies. sorted lexicographically. -->
     <dependency>
       <groupId>org.apache.accumulo</groupId>

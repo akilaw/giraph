@@ -24,6 +24,7 @@ import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.PathFilter;
+import org.apache.hadoop.giraph.shims.ShimLoader;
 import org.apache.hadoop.mapreduce.InputSplit;
 import org.apache.hadoop.mapreduce.JobContext;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
@@ -36,11 +37,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-
-/*if[HADOOP_NON_SECURE]
-else[HADOOP_NON_SECURE]
-import org.apache.hadoop.mapreduce.security.TokenCache;
-end[HADOOP_NON_SECURE]*/
 
 /**
  * Provides functionality similar to {@link FileInputFormat},
@@ -223,12 +219,7 @@ public abstract class GiraphFileInputFormat<K, V>
       throw new IOException("No input paths specified in job");
     }
 
-/*if[HADOOP_NON_SECURE]
-else[HADOOP_NON_SECURE]
-    // get tokens for all the required FileSystems..
-    TokenCache.obtainTokensForNamenodes(job.getCredentials(), dirs,
-        job.getConfiguration());
-end[HADOOP_NON_SECURE]*/
+    ShimLoader.getHadoopShims().obtainTokensForNamenodes(job, dirs);
 
     List<IOException> errors = new ArrayList<IOException>();
 

@@ -511,6 +511,18 @@ under the License.
       <artifactId>fastutil</artifactId>
     </dependency>
     <dependency>
+      <groupId>org.apache.giraph</groupId>
+      <artifactId>giraph-shims-aggregator</artifactId>
+      <version>${project.version}</version>
+      <scope>runtime</scope>
+      <optional>true</optional>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.giraph.shims</groupId>
+      <artifactId>giraph-shims-common</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
       <groupId>org.apache.zookeeper</groupId>
       <artifactId>zookeeper</artifactId>
     </dependency>

@@ -18,12 +18,12 @@
 
 package org.apache.giraph.io.formats;
 
-import org.apache.giraph.bsp.ImmutableOutputCommitter;
 import org.apache.giraph.conf.GiraphConfiguration;
 import org.apache.giraph.graph.Vertex;
 import org.apache.giraph.io.VertexOutputFormat;
 import org.apache.giraph.io.VertexWriter;
 import org.apache.giraph.utils.TestGraph;
+import org.apache.hadoop.giraph.shims.ShimLoader;
 import org.apache.hadoop.io.Writable;
 import org.apache.hadoop.io.WritableComparable;
 import org.apache.hadoop.mapreduce.JobContext;
@@ -100,6 +100,6 @@ public class InMemoryVertexOutputFormat<I extends WritableComparable,
   @Override
   public OutputCommitter getOutputCommitter(
       TaskAttemptContext context) throws IOException, InterruptedException {
-    return new ImmutableOutputCommitter();
+    return ShimLoader.getHadoopShims().getNullOutputCommitter();
   }
 }
