@@ -93,12 +93,17 @@ public class TestHBaseRootMarkerVertextFormat extends BspCase {
     FileSystem fs = null;
     Path hbaseRootdir = null;
     try {
+      Configuration conf = testUtil.getConfiguration();
+
+      // We don't need the Web UI to run so set the ports to -1
+      conf.setInt("hbase.master.info.port", -1);
+      conf.setInt("hbase.regionserver.info.port", -1);
+
       MiniHBaseCluster cluster = testUtil.startMiniCluster(1);
       cluster.waitForActiveAndReadyMaster();
       testUtil.startMiniMapReduceCluster();
 
       // Let's set up the hbase root directory.
-      Configuration conf = testUtil.getConfiguration();
       try {
         fs = testUtil.getTestFileSystem();
         String randomStr = UUID.randomUUID().toString();
